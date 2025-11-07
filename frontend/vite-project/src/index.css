@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  --color-light: #ffffff;
+  --color-dark: #1f1f1f;
+  --text-light: rgba(255,255,255,0.9);
+  --text-dark: #1a1a1a;
+  --accent: #646cff;
+  --accent-hover: #535bf2;
+}
+
+body {
+  @apply min-h-screen flex flex-col items-center justify-start p-4 transition-colors duration-300;
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  font-weight: 400;
+  background-color: var(--color-dark);
+  color: var(--text-light);
+}
+
+.card {
+  @apply bg-gray-800 text-white shadow-lg rounded-xl p-6 mb-4 w-full max-w-md transition-all duration-300;
+}
+
+button {
+  @apply rounded-lg px-6 py-2 font-semibold transition-all duration-300;
+}
+button:hover {
+  opacity: 0.9;
+}
+
+.loader {
+  @apply animate-spin rounded-full border-4 border-t-blue-500 border-gray-200;
+}
