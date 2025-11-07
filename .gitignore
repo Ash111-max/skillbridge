@@ -27,3 +27,54 @@ backend/models/
 .vscode/
 .idea/
 *.log
+
+# === Python ===
+__pycache__/
+*.py[cod]
+
+instance/
+.env
+.env.*
+venv/
+ENV/
+env/
+.venv/
+*.log
+*.egg-info/
+dist/
+build/
+*.mypy_cache/
+*.pytest_cache/
+
+# === FastAPI / Backend ===
+/recordings/
+__pycache__/
+/backend/__pycache__/
+/backend/recordings/
+/backend/__pycache__/
+/backend/*.db
+/backend/*.sqlite3
+
+# === Node / React / Vite ===
+node_modules/
+dist/
+.vite/
+.cache/
+coverage/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# === OS Files ===
+.DS_Store
+Thumbs.db
+
+# === VS Code ===
+.vscode/
+.history/
+*.code-workspace
+
+# === Other ===
+/frontend/vite-project/node_modules/
+/frontend/vite-project/dist/
