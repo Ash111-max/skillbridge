@@ -4,34 +4,89 @@
 
 :root {
   --font-sans: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  --color-light: #ffffff;
-  --color-dark: #1f1f1f;
-  --text-light: rgba(255,255,255,0.9);
-  --text-dark: #1a1a1a;
-  --accent: #646cff;
-  --accent-hover: #535bf2;
 }
 
 body {
-  @apply min-h-screen flex flex-col items-center justify-start p-4 transition-colors duration-300;
+  margin: 0;
+  padding: 0;
   font-family: var(--font-sans);
   line-height: 1.5;
   font-weight: 400;
-  background-color: var(--color-dark);
-  color: var(--text-light);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-.card {
-  @apply bg-gray-800 text-white shadow-lg rounded-xl p-6 mb-4 w-full max-w-md transition-all duration-300;
+* {
+  box-sizing: border-box;
 }
 
-button {
-  @apply rounded-lg px-6 py-2 font-semibold transition-all duration-300;
-}
-button:hover {
-  opacity: 0.9;
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
 }
 
-.loader {
-  @apply animate-spin rounded-full border-4 border-t-blue-500 border-gray-200;
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(168, 85, 247, 0.5);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(168, 85, 247, 0.7);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes ping {
+  75%, 100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-25%);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-out;
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-ping {
+  animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+.animate-bounce {
+  animation: bounce 0.6s infinite;
 }

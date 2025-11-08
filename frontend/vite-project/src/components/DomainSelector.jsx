@@ -2,17 +2,16 @@ import React from "react";
 
 const DomainSelector = ({ domains, selected, setSelected }) => {
   return (
-    <div className="flex gap-4 items-center">
-      <label htmlFor="domain" className="font-semibold">Select Domain:</label>
+    <div className="space-y-4">
+      <label className="block text-sm font-medium text-gray-300">Interview Domain</label>
       <select
-        id="domain"
         value={selected}
         onChange={(e) => setSelected(e.target.value)}
-        className="bg-gray-800 px-3 py-2 rounded-lg text-white"
+        className="w-full px-6 py-4 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all appearance-none cursor-pointer"
       >
-        <option value="">-- Select --</option>
+        <option value="" className="bg-slate-800">Select a domain...</option>
         {domains.map((d) => (
-          <option key={d} value={d}>
+          <option key={d} value={d} className="bg-slate-800">
             {d}
           </option>
         ))}

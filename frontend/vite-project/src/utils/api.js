@@ -11,6 +11,8 @@ export async function fetchQuestion(domain) {
 }
 
 export async function submitInterview(domain, audioBlob) {
+  console.log("📤 Submitting interview:", { domain, audioBlob });
+  
   const formData = new FormData();
   formData.append("audio_file", audioBlob, "response.wav");
 
@@ -19,12 +21,17 @@ export async function submitInterview(domain, audioBlob) {
     body: formData,
   });
 
+  console.log("📥 Response status:", res.status, res.statusText);
+
   if (!res.ok) {
     const msg = await res.text();
+    console.error("❌ Error response:", msg);
     throw new Error(`Submission failed: ${msg}`);
   }
 
-  return res.json();
+  const jsonData = await res.json();
+  console.log("📥 Response JSON:", jsonData);
+  return jsonData;
 }
 
 export async function downloadReport(interviewId) {
