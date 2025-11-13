@@ -1,27 +1,56 @@
 fastapi
 uvicorn[standard]
+
 pydub
 sounddevice
 wavio
 SpeechRecognition
 noisereduce
-soundfile
-transformers
-textblob
-sentence-transformers
-reportlab
 pydantic
-python-dotenv
-psycopg2-binary
 sqlalchemy  
 speechrecognition
-python-multipart
-openai-whisper
-torch
 aiofiles
 databases
-asyncpg
 alembic
 passlib[bcrypt] 
 python-jose 
 fastapi-users
+
+
+#Database
+sqlalchemy[asyncio]
+asyncpg
+psycopg2-binary
+
+#file handling
+python-multipart
+python-dotenv
+
+# AI/ML
+openai
+whisper
+openai-whisper
+librosa
+soundfile
+transformers
+textblob
+sentence-transformers
+torch
+
+# PDF generation
+reportlab
+
+# Authentication
+passlib[bcrypt]  
+python-jose[cryptography]  
+pydantic[email]  
+
+# Optional: for better performance
+orjson
+
+fastapi[all] 
+python-dotenv 
+aiosmtplib 
+email-validator
+
+language_tool_python

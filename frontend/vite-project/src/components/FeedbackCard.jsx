@@ -13,15 +13,15 @@ const FeedbackCard = ({ feedback }) => {
   // Safely extract scores
   const clarityScore = feedback.clarity_score || feedback.fluency_score;
   const confidenceScore = feedback.confidence_score;
-  const pacingScore = feedback.pacing_score;
-  const tone = feedback.tone;
+  const pacingScore = feedback.pacing_score || feedback.confidence_score;
+  const tone = feedback.tone || (feedback.sentiment?.label);
   const sentiment = feedback.sentiment;
   const overallFeedback = feedback.overall_feedback;
   const fillerWords = feedback.filler_word_count || feedback.filler_words?.length || 0;
   
   // Extract grammar info if it's an object
   const grammarInfo = feedback.grammar;
-  const grammarScore = grammarInfo?.mapped_score || grammarInfo?.confidence;
+  const grammarScore = grammarInfo?.score || grammarInfo?.mapped_score * 10 || grammarInfo?.confidence * 10;
 
   return (
     <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 backdrop-blur-xl border border-green-500/20 rounded-2xl p-8">

@@ -48,6 +48,7 @@ build/
 
 # === FastAPI / Backend ===
 /recordings/
+recordings/
 __pycache__/
 /backend/__pycache__/
 /backend/recordings/
@@ -67,7 +68,6 @@ yarn-debug.log*
 yarn-error.log*
 
 # === OS Files ===
-.DS_Store
 Thumbs.db
 
 # === VS Code ===
@@ -78,3 +78,79 @@ Thumbs.db
 # === Other ===
 /frontend/vite-project/node_modules/
 /frontend/vite-project/dist/
+
+*.db
+
+# === Python ===
+*.db
+*.sqlite3
+
+# === Virtual Environment ===
+.env.*
+
+# === Logs & Cache ===
+*.log
+logs/
+*.sqlite
+*.db-journal
+
+# === Recordings & Generated Data ===
+backend/uploads/
+backend/temp/
+backend/audio/
+backend/__pycache__/
+
+# === Frontend (Vite/Node) ===
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.DS_Store
+
+# === IDE / OS Files ===
+.vscode/
+.idea/
+Thumbs.db
+
+# === Models & Large Files ===
+*.pt
+*.bin
+*.h5
+*.pkl
+models/
+huggingface/
+whisper/
+
+# =========================
+# Python / FastAPI Backend
+# =========================
+*.db
+*.sqlite3
+*.db-journal
+
+# Virtual Environment
+.env.*
+
+# Logs & Cache
+*.log
+backend/logs/
+backend/__pycache__/
+
+# Recordings & Temporary Files
+backend/recordings/
+backend/uploads/
+backend/temp/
+backend/audio/
+backend/cache/
+
+# AI / ML Models (Heavy files)
+models/
+huggingface/
+whisper/
+*.pt
+*.bin
+*.h5
+*.pkl
+
+
+
+
