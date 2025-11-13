@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-QUESTIONS_PATH = Path(__file__).resolve().parent / "models" / "questions.json"
+QUESTIONS_PATH = Path(__file__).resolve().parent / "db_models" / "questions.json"
 
 def normalize_question_item(item):
     if isinstance(item, dict):

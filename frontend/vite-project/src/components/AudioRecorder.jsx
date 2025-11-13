@@ -1,3 +1,5 @@
+// AudioRecorder.jsx
+
 import React, { useState, useRef, useEffect } from "react";
 import { Mic, StopCircle } from "lucide-react";
 
@@ -6,8 +8,17 @@ export default function AudioRecorder({ onRecordingComplete, onRecordingStart })
   const [recordedAudio, setRecordedAudio] = useState(null);
   const [recordingTime, setRecordingTime] = useState(0);
   const mediaRecorderRef = useRef(null);
+  const streamRef = useRef(null);
   const chunksRef = useRef([]);
   const timerRef = useRef(null);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopAllStreams();
+      clearInterval(timerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (recording) {
@@ -26,42 +37,115 @@ export default function AudioRecorder({ onRecordingComplete, onRecordingStart })
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const stopAllStreams = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => {
+        track.stop();
+        console.log("🛑 Stopped track:", track.label);
+      });
+      streamRef.current = null;
+    }
+  };
+
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorderRef.current = new MediaRecorder(stream);
+      stopAllStreams();
+
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          sampleRate: 44100
+        } 
+      });
+      
+      streamRef.current = stream;
+      
+      if (!MediaRecorder.isTypeSupported('audio/webm')) {
+        console.warn("audio/webm not supported, using default");
+      }
+
+      mediaRecorderRef.current = new MediaRecorder(stream, {
+        mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : undefined
+      });
+      
       chunksRef.current = [];
       
-      mediaRecorderRef.current.ondataavailable = (e) => chunksRef.current.push(e.data);
+      mediaRecorderRef.current.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          chunksRef.current.push(e.data);
+        }
+      };
       
       mediaRecorderRef.current.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: "audio/wav" });
+        const mimeType = mediaRecorderRef.current.mimeType || 'audio/webm';
+        const blob = new Blob(chunksRef.current, { type: mimeType });
         setRecordedAudio(blob);
         onRecordingComplete(blob);
-        stream.getTracks().forEach(track => track.stop());
+        stopAllStreams();
+      };
+
+      mediaRecorderRef.current.onerror = (e) => {
+        console.error("MediaRecorder error:", e);
+        alert("Recording error occurred. Please try again.");
+        stopAllStreams();
+        setRecording(false);
       };
       
       mediaRecorderRef.current.start();
       setRecording(true);
       setRecordingTime(0);
       if (onRecordingStart) onRecordingStart();
+      
+      console.log("🎤 Recording started");
+      
     } catch (err) {
-      alert("Microphone access denied. Please allow microphone access to record your answer.");
+      console.error("Microphone error:", err);
+      stopAllStreams();
+      
+      let errorMsg = "Microphone access denied.";
+      
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        errorMsg = "Microphone access denied. Please allow microphone access in your browser settings and try again.";
+      } else if (err.name === 'NotFoundError') {
+        errorMsg = "No microphone found. Please connect a microphone and try again.";
+      } else if (err.name === 'NotReadableError') {
+        errorMsg = "Microphone is being used by another application. Please:\n\n1. Close other apps/tabs using the microphone\n2. Refresh this page\n3. Try again\n\nIf the issue persists, restart your browser.";
+      } else if (err.name === 'AbortError') {
+        errorMsg = "Microphone access was aborted. Please try again.";
+      } else if (err.name === 'NotSupportedError') {
+        errorMsg = "Your browser doesn't support audio recording. Please use Chrome, Edge, or Firefox.";
+      }
+      
+      alert(errorMsg);
     }
   };
 
   const stopRecording = () => {
     if (mediaRecorderRef.current && recording) {
+      console.log("⏹️ Stopping recording...");
       mediaRecorderRef.current.stop();
       setRecording(false);
+      
+      setTimeout(() => {
+        stopAllStreams();
+      }, 100);
     }
   };
 
   const resetRecording = () => {
+    console.log("🔄 Resetting recording...");
+    
+    if (recordedAudio) {
+      URL.revokeObjectURL(URL.createObjectURL(recordedAudio));
+    }
+    
     setRecordedAudio(null);
     setRecordingTime(0);
     onRecordingComplete(null);
     if (onRecordingStart) onRecordingStart();
+    
+    stopAllStreams();
   };
 
   return (
