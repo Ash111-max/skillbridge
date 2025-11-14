@@ -54,3 +54,38 @@ aiosmtplib
 email-validator
 
 language_tool_python
+
+# not working bcz react version is 19 but the below runs in version 18
+# npm install recharts
+
+# 🧩 Option 1 — Quick Fix (Recommended)
+
+# If you just want it to work right now:
+
+# npm install recharts --legacy-peer-deps
+
+
+# ✅ This tells npm to ignore version mismatches between React 19 and libraries expecting React 18.
+# It’s safe in most cases, and your app will still run perfectly fine with React 19.
+
+# 🧱 Option 2 — Permanent Fix (Best for team repos)
+
+# If you want your dependencies to be fully compatible and clean for everyone on the team:
+
+# Downgrade React to the latest stable React 18 release:
+
+# npm install react@18.3.1 react-dom@18.3.1
+
+
+# Then install the chart library and icons cleanly:
+
+# npm install recharts lucide-react
+
+
+# This way, you won’t get peer dependency warnings, and all libraries will work seamlessly.
+
+
+# 🧩 Fix: Install react-is manually
+
+# Run this inside your frontend project folder (vite-project):
+# npm install react-is

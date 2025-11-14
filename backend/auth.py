@@ -73,6 +73,22 @@ def decode_access_token(token: str) -> dict:
 
 
 # FIXED: Callable class for database dependency
+# class GetDBDependency:
+#     """Callable class for database dependency injection"""
+#     def __init__(self):
+#         self.dependency = None
+    
+#     def set_dependency(self, dep):
+#         """Set the actual get_db dependency from main.py"""
+#         self.dependency = dep
+    
+#     def __call__(self):
+#         """Make this callable so it works with Depends()"""
+#         if self.dependency is None:
+#             raise RuntimeError("Database dependency not initialized. Call initialize_auth_dependency() in main.py")
+#         return self.dependency
+    
+# FIXED: Proper callable class for database dependency
 class GetDBDependency:
     """Callable class for database dependency injection"""
     def __init__(self):
@@ -82,11 +98,14 @@ class GetDBDependency:
         """Set the actual get_db dependency from main.py"""
         self.dependency = dep
     
-    def __call__(self):
-        """Make this callable so it works with Depends()"""
+    async def __call__(self):
+        """FIXED: Make this async and properly yield the session"""
         if self.dependency is None:
             raise RuntimeError("Database dependency not initialized. Call initialize_auth_dependency() in main.py")
-        return self.dependency
+        
+        # Properly iterate through the generator
+        async for session in self.dependency():
+            yield session
 
 # Create a singleton instance
 get_db_dependency = GetDBDependency()

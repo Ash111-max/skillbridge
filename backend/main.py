@@ -176,10 +176,20 @@ async def update_user_progress(db: AsyncSession, user_id: int, domain: str, feed
     )
     progress = result.scalar_one_or_none()
 
+    # Extract scores from feedback
     clarity = feedback.get("clarity_score", 0) or feedback.get("fluency_score", 0)
     confidence = feedback.get("confidence_score", 0)
+
+    # grammar_data = feedback.get("grammar", {})
+    # grammar = grammar_data.get("score", 0) if isinstance(grammar_data, dict) else 0
+
+    # Handle grammar score (might be dict or float)
     grammar_data = feedback.get("grammar", {})
-    grammar = grammar_data.get("score", 0) if isinstance(grammar_data, dict) else 0
+    if isinstance(grammar_data, dict):
+        grammar = grammar_data.get("score", 0)
+    else:
+        grammar = grammar_data if grammar_data else 0
+
     overall = feedback.get("overall_performance", 0)
 
     if progress:
@@ -189,7 +199,7 @@ async def update_user_progress(db: AsyncSession, user_id: int, domain: str, feed
         progress.avg_confidence_score = ((progress.avg_confidence_score * total) + confidence) / (total + 1)
         progress.avg_grammar_score = ((progress.avg_grammar_score * total) + grammar) / (total + 1)
         progress.avg_overall_score = ((progress.avg_overall_score * total) + overall) / (total + 1)
-        progress.last_practice_date = datetime.datetime.utcnow()
+        progress.last_practice_date = datetime.utcnow()
     else:
         progress = UserProgress(
             user_id=user_id,
@@ -199,11 +209,16 @@ async def update_user_progress(db: AsyncSession, user_id: int, domain: str, feed
             avg_confidence_score=confidence,
             avg_grammar_score=grammar,
             avg_overall_score=overall,
-            last_practice_date=datetime.datetime.utcnow(),
+            last_practice_date=datetime.utcnow(),
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
         )
         db.add(progress)
 
     await db.commit()
+    
+    print(f"✅ Progress updated for user {user_id} in domain {domain}")
+    print(f"   Sessions: {progress.total_sessions}, Avg Score: {progress.avg_overall_score:.1f}")
 
 
 
@@ -774,3 +789,346 @@ async def get_interview_history(
     )
     interviews = result.scalars().all()
     return [InterviewResponse.model_validate(i) for i in interviews]
+
+
+# =================== DASHBOARD & ANALYTICS ROUTES ===================
+# Add these after your existing dashboard route
+
+@app.get("/api/user/stats")
+async def get_user_stats(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get user statistics for dashboard overview
+    Returns: total interviews, domains practiced, average score, recent activity
+    """
+    try:
+        # Total interviews count
+        total_result = await db.execute(
+            select(func.count(Interview.id))
+            .where(Interview.user_id == current_user.id)
+        )
+        total_interviews = total_result.scalar() or 0
+        
+        # Unique domains practiced
+        domains_result = await db.execute(
+            select(func.count(func.distinct(Interview.domain)))
+            .where(Interview.user_id == current_user.id)
+        )
+        domains_practiced = domains_result.scalar() or 0
+        
+        # Average overall score from user_progress table
+        progress_result = await db.execute(
+            select(func.avg(UserProgress.avg_overall_score))
+            .where(UserProgress.user_id == current_user.id)
+        )
+        avg_score = progress_result.scalar()
+        avg_overall_score = round(float(avg_score), 1) if avg_score else 0.0
+        
+        # Best score
+        best_result = await db.execute(
+            select(func.max(UserProgress.avg_overall_score))
+            .where(UserProgress.user_id == current_user.id)
+        )
+        best_score = best_result.scalar()
+        best_score = round(float(best_score), 1) if best_score else 0.0
+        
+        # Latest interview date
+        latest_result = await db.execute(
+            select(func.max(Interview.created_at))
+            .where(Interview.user_id == current_user.id)
+        )
+        latest_date = latest_result.scalar()
+        
+        # Total practice time (sum of all durations)
+        duration_result = await db.execute(
+            select(Interview)
+            .where(Interview.user_id == current_user.id)
+        )
+        interviews = duration_result.scalars().all()
+        total_duration = sum(
+            i.feedback.get("duration", 0) 
+            for i in interviews 
+            if i.feedback and i.feedback.get("duration")
+        )
+        total_minutes = round(total_duration / 60, 1) if total_duration else 0.0
+        
+        return {
+            "total_interviews": total_interviews,
+            "domains_practiced": domains_practiced,
+            "avg_overall_score": avg_overall_score,
+            "best_score": best_score,
+            "latest_interview": latest_date.isoformat() if latest_date else None,
+            "total_practice_minutes": total_minutes
+        }
+    except Exception as e:
+        print(f"Error fetching user stats: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/user/progress-by-domain")
+async def get_progress_by_domain(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get detailed progress breakdown by domain
+    Returns: sessions, scores, last practice date for each domain
+    """
+    try:
+        result = await db.execute(
+            select(UserProgress)
+            .where(UserProgress.user_id == current_user.id)
+            .order_by(UserProgress.avg_overall_score.desc())
+        )
+        progress_entries = result.scalars().all()
+        
+        progress_data = []
+        for entry in progress_entries:
+            progress_data.append({
+                "domain": entry.domain,
+                "total_sessions": entry.total_sessions,
+                "avg_clarity_score": round(entry.avg_clarity_score, 1),
+                "avg_confidence_score": round(entry.avg_confidence_score, 1),
+                "avg_grammar_score": round(entry.avg_grammar_score, 1),
+                "avg_overall_score": round(entry.avg_overall_score, 1),
+                "last_practice_date": entry.last_practice_date.isoformat() if entry.last_practice_date else None
+            })
+        
+        return {"progress": progress_data}
+    except Exception as e:
+        print(f"Error fetching progress by domain: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/user/score-history")
+async def get_score_history(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    limit: int = 10
+):
+    """
+    Get recent interview scores for trend visualization
+    Returns: last N interviews with scores and dates
+    """
+    try:
+        result = await db.execute(
+            select(Interview)
+            .where(Interview.user_id == current_user.id)
+            .order_by(Interview.created_at.desc())
+            .limit(limit)
+        )
+        interviews = result.scalars().all()
+        
+        # Reverse to show oldest first (for chart display)
+        score_history = []
+        for interview in reversed(interviews):
+            if interview.feedback:
+                score_history.append({
+                    "date": interview.created_at.strftime("%m/%d"),
+                    "overall_score": interview.feedback.get("overall_performance", 0),
+                    "clarity": interview.feedback.get("clarity_score", 0),
+                    "fluency": interview.feedback.get("fluency_score", 0),
+                    "grammar": interview.feedback.get("grammar", {}).get("score", 0) if isinstance(interview.feedback.get("grammar"), dict) else 0,
+                    "confidence": interview.feedback.get("confidence_score", 0),
+                    "domain": interview.domain
+                })
+        
+        return {"history": score_history}
+    except Exception as e:
+        print(f"Error fetching score history: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/user/recent-interviews")
+async def get_recent_interviews(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    limit: int = 5
+):
+    """
+    Get recent interview summaries for activity feed
+    """
+    try:
+        result = await db.execute(
+            select(Interview)
+            .where(Interview.user_id == current_user.id)
+            .order_by(Interview.created_at.desc())
+            .limit(limit)
+        )
+        interviews = result.scalars().all()
+        
+        recent = []
+        for interview in interviews:
+            feedback = interview.feedback or {}
+            recent.append({
+                "id": interview.id,
+                "domain": interview.domain,
+                "question": interview.question[:100] + "..." if len(interview.question) > 100 else interview.question,
+                "overall_score": feedback.get("overall_performance", 0),
+                "created_at": interview.created_at.isoformat(),
+                "created_at_formatted": interview.created_at.strftime("%B %d, %Y at %I:%M %p")
+            })
+        
+        return {"recent_interviews": recent}
+    except Exception as e:
+        print(f"Error fetching recent interviews: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/user/interview-history")
+async def get_full_interview_history(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    page: int = 1,
+    limit: int = 10,
+    domain: Optional[str] = None
+):
+    """
+    Get paginated interview history with optional domain filter
+    """
+    try:
+        offset = (page - 1) * limit
+        
+        # Build query
+        query = select(Interview).where(Interview.user_id == current_user.id)
+        
+        # Apply domain filter if provided
+        if domain:
+            query = query.where(Interview.domain == domain)
+        
+        # Get total count for pagination
+        count_query = select(func.count(Interview.id)).where(Interview.user_id == current_user.id)
+        if domain:
+            count_query = count_query.where(Interview.domain == domain)
+        
+        count_result = await db.execute(count_query)
+        total_count = count_result.scalar() or 0
+        
+        # Get interviews
+        query = query.order_by(Interview.created_at.desc()).limit(limit).offset(offset)
+        result = await db.execute(query)
+        interviews = result.scalars().all()
+        
+        # Format response
+        history = []
+        for interview in interviews:
+            feedback = interview.feedback or {}
+            grammar_data = feedback.get("grammar", {})
+            
+            history.append({
+                "id": interview.id,
+                "domain": interview.domain,
+                "question": interview.question,
+                "response": interview.response,
+                "created_at": interview.created_at.isoformat(),
+                "created_at_formatted": interview.created_at.strftime("%B %d, %Y at %I:%M %p"),
+                "scores": {
+                    "overall": feedback.get("overall_performance", 0),
+                    "clarity": feedback.get("clarity_score", 0),
+                    "fluency": feedback.get("fluency_score", 0),
+                    "grammar": grammar_data.get("score", 0) if isinstance(grammar_data, dict) else 0,
+                    "confidence": feedback.get("confidence_score", 0),
+                    "pacing": feedback.get("pacing_score", 0)
+                },
+                "feedback": feedback.get("overall_feedback", ""),
+                "duration": feedback.get("duration"),
+                "word_count": feedback.get("word_count")
+            })
+        
+        total_pages = (total_count + limit - 1) // limit  # Ceiling division
+        
+        return {
+            "interviews": history,
+            "pagination": {
+                "current_page": page,
+                "total_pages": total_pages,
+                "total_count": total_count,
+                "has_next": page < total_pages,
+                "has_prev": page > 1
+            }
+        }
+    except Exception as e:
+        print(f"Error fetching interview history: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/user/performance-metrics")
+async def get_performance_metrics(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get detailed performance metrics across all categories
+    """
+    try:
+        result = await db.execute(
+            select(Interview)
+            .where(Interview.user_id == current_user.id)
+        )
+        interviews = result.scalars().all()
+        
+        if not interviews:
+            return {
+                "avg_clarity": 0,
+                "avg_fluency": 0,
+                "avg_grammar": 0,
+                "avg_confidence": 0,
+                "avg_pacing": 0,
+                "total_filler_words": 0,
+                "avg_wpm": 0,
+                "improvement_rate": 0
+            }
+        
+        # Calculate averages
+        clarity_scores = []
+        fluency_scores = []
+        grammar_scores = []
+        confidence_scores = []
+        pacing_scores = []
+        filler_counts = []
+        wpms = []
+        
+        for interview in interviews:
+            feedback = interview.feedback or {}
+            clarity_scores.append(feedback.get("clarity_score", 0))
+            fluency_scores.append(feedback.get("fluency_score", 0))
+            
+            grammar_data = feedback.get("grammar", {})
+            grammar_scores.append(grammar_data.get("score", 0) if isinstance(grammar_data, dict) else 0)
+            
+            confidence_scores.append(feedback.get("confidence_score", 0))
+            pacing_scores.append(feedback.get("pacing_score", 0))
+            filler_counts.append(feedback.get("filler_word_count", 0))
+            
+            if feedback.get("pacing_wpm"):
+                wpms.append(feedback["pacing_wpm"])
+        
+        # Calculate improvement rate (last 5 vs first 5)
+        improvement_rate = 0
+        if len(interviews) >= 10:
+            first_5_avg = sum(i.feedback.get("overall_performance", 0) for i in interviews[-5:]) / 5
+            last_5_avg = sum(i.feedback.get("overall_performance", 0) for i in interviews[:5]) / 5
+            improvement_rate = round(((last_5_avg - first_5_avg) / max(first_5_avg, 1)) * 100, 1)
+        
+        return {
+            "avg_clarity": round(sum(clarity_scores) / len(clarity_scores), 1),
+            "avg_fluency": round(sum(fluency_scores) / len(fluency_scores), 1),
+            "avg_grammar": round(sum(grammar_scores) / len(grammar_scores), 1),
+            "avg_confidence": round(sum(confidence_scores) / len(confidence_scores), 1),
+            "avg_pacing": round(sum(pacing_scores) / len(pacing_scores), 1),
+            "total_filler_words": sum(filler_counts),
+            "avg_filler_per_interview": round(sum(filler_counts) / len(filler_counts), 1),
+            "avg_wpm": round(sum(wpms) / len(wpms), 1) if wpms else 0,
+            "improvement_rate": improvement_rate
+        }
+    except Exception as e:
+        print(f"Error fetching performance metrics: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
